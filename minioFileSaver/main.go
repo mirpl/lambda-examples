@@ -25,25 +25,16 @@ var (
 	log *zap.Logger
 )
 
-type FileSaverEvent struct {
-	URL string `json:"url"`
+type fileSaverEvent struct {
+	inputURL string `json:"inputUrl"`
 }
 
-func handler(ctx context.Context, evt FileSaverEvent) (string, error) {
-	file, err := GetFileFromURL(evt.URL)
-	if err != nil {
-		return "", err
-	}
-	defer file.Close()
-
-	if err = SaveFileToS3(file, evt.URL); err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("Hello %s!", evt.URL), nil
+type fileSaverResponse struct {
+	inputURL string `json:"inputUrl"`
+	S3path   string `json:"s3path"`
 }
 
-func GetFileFromURL(requestURL string) (*os.File, error) {
+func getFileFromURL(requestURL string) (*os.File, error) {
 	if _, err := url.ParseRequestURI(requestURL); err != nil {
 		log.Error("parsing request URL failed", zap.Error(err))
 		return nil, err
@@ -69,7 +60,7 @@ func GetFileFromURL(requestURL string) (*os.File, error) {
 	return file, nil
 }
 
-func SaveFileToS3(file *os.File, requestURL string) error {
+func saveFileToS3(file *os.File, requestURL string) error {
 	s, err := session.NewSession(&aws.Config{Region: aws.String(S3Region)})
 	if err != nil {
 		//log.Fatal(err)
@@ -97,6 +88,23 @@ func SaveFileToS3(file *os.File, requestURL string) error {
 		log.Error("saving file to S3 failed", zap.Error(err))
 	}
 	return err
+}
+
+func handler(ctx context.Context, evt fileSaverEvent) (fileSaverResponse, error) {
+	file, err := getFileFromURL(evt.inputURL)
+	if err != nil {
+		return fileSaverResponse{}, err
+	}
+	defer file.Close()
+
+	if err = saveFileToS3(file, evt.inputURL); err != nil {
+		return fileSaverResponse{}, err
+	}
+
+	return fileSaverResponse{
+		inputURL: evt.inputURL,
+		S3path:   S3Bucket,
+	}, nil
 }
 
 func main() {
