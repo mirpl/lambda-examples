@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-
-	//"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,8 +17,8 @@ import (
 )
 
 const (
-	S3_REGION = "us-east-1"
-	S3_BUCKET = "mvp-file-storage"
+	S3Region = "us-east-1"
+	S3Bucket = "mvp-file-storage"
 )
 
 type FileServerEvent struct {
@@ -33,7 +31,7 @@ func handler(ctx context.Context, evt FileServerEvent) (string, error) {
 	}
 
 	// Create a single AWS session (we can re use this if we're uploading many files)
-	s, err := session.NewSession(&aws.Config{Region: aws.String(S3_REGION)})
+	s, err := session.NewSession(&aws.Config{Region: aws.String(S3Region)})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,7 +70,7 @@ func SaveFileToS3(s *session.Session, url string) error {
 	}
 
 	_, err = s3.New(s).PutObject(&s3.PutObjectInput{
-		Bucket:               aws.String(S3_BUCKET),
+		Bucket:               aws.String(S3Bucket),
 		Key:                  aws.String(url),
 		ACL:                  aws.String("private"),
 		Body:                 bytes.NewReader(buffer),
