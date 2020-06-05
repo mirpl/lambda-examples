@@ -25,11 +25,11 @@ var (
 	log *zap.Logger
 )
 
-type FileServerEvent struct {
+type FileSaverEvent struct {
 	URL string `json:"url"`
 }
 
-func handler(ctx context.Context, evt FileServerEvent) (string, error) {
+func handler(ctx context.Context, evt FileSaverEvent) (string, error) {
 	file, err := GetFileFromURL(evt.URL)
 	if err != nil {
 		return "", err
