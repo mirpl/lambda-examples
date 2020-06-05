@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -26,7 +27,7 @@ var (
 )
 
 type fileSaverEvent struct {
-	inputURL string `json:"inputUrl"`
+	requestURL string `json:"requestUrl"`
 }
 
 type fileSaverResponse struct {
@@ -60,10 +61,11 @@ func getFileFromURL(requestURL string) (*os.File, error) {
 	return file, nil
 }
 
-func saveFileToS3(file *os.File, requestURL string) error {
+func saveFileToS3(file *os.File, requestURL string) (string, error) {
 	s, err := session.NewSession(&aws.Config{Region: aws.String(S3Region)})
 	if err != nil {
-		//log.Fatal(err)
+		log.Error("creating new S3 session failed", zap.Error(err))
+		return "", err
 	}
 
 	fileInfo, _ := file.Stat()
@@ -71,12 +73,13 @@ func saveFileToS3(file *os.File, requestURL string) error {
 	buffer := make([]byte, size)
 	if _, err := file.Read(buffer); err != nil {
 		log.Error("reading buffer failed", zap.Error(err))
-		return err
+		return "", err
 	}
 
+	s3path := fmt.Sprintf("s3.%s", requestURL)
 	_, err = s3.New(s).PutObject(&s3.PutObjectInput{
 		Bucket:               aws.String(S3Bucket),
-		Key:                  aws.String(requestURL),
+		Key:                  aws.String(s3path),
 		ACL:                  aws.String("private"),
 		Body:                 bytes.NewReader(buffer),
 		ContentLength:        aws.Int64(size),
@@ -87,23 +90,24 @@ func saveFileToS3(file *os.File, requestURL string) error {
 	if err != nil {
 		log.Error("saving file to S3 failed", zap.Error(err))
 	}
-	return err
+	return s3path, err
 }
 
 func handler(ctx context.Context, evt fileSaverEvent) (fileSaverResponse, error) {
-	file, err := getFileFromURL(evt.inputURL)
+	file, err := getFileFromURL(evt.requestURL)
 	if err != nil {
 		return fileSaverResponse{}, err
 	}
 	defer file.Close()
 
-	if err = saveFileToS3(file, evt.inputURL); err != nil {
+	s3path, err := saveFileToS3(file, evt.requestURL)
+	if err != nil {
 		return fileSaverResponse{}, err
 	}
 
 	return fileSaverResponse{
-		inputURL: evt.inputURL,
-		S3path:   S3Bucket,
+		inputURL: evt.requestURL,
+		S3path:   s3path,
 	}, nil
 }
 
