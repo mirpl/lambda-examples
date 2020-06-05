@@ -39,14 +39,14 @@ func handler(ctx context.Context, evt FileServerEvent) (string, error) {
 	}
 
 	// Upload
-	if err = AddTextFileToS3(s, evt.URL); err != nil {
+	if err = SaveFileToS3(s, evt.URL); err != nil {
 		log.Fatal(err)
 	}
 
 	return fmt.Sprintf("Hello %s!", evt.URL), nil
 }
 
-func AddTextFileToS3(s *session.Session, url string) error {
+func SaveFileToS3(s *session.Session, url string) error {
 
 	response, e := http.Get(url)
 	if e != nil {
