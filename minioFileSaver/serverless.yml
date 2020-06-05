@@ -1,0 +1,15 @@
+service: mvp-minioFileSaver
+
+provider:
+  name: aws
+  runtime: go1.x
+
+package:
+  exclude:
+    - ./**
+  include:
+    - ./bin/**
+
+functions:
+  minioFileSaver:
+    handler: ./bin/minioFileSaver
