@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
@@ -47,7 +48,7 @@ func getFileFromURL(requestURL string) (*os.File, error) {
 	}
 	defer response.Body.Close()
 
-	file, err := os.Create("/tmp/farmer.jpg")
+	file, err := os.Create(filepath.Base(requestURL))
 	if err != nil {
 		log.Error("creating file failed", zap.Error(err))
 		return nil, err
