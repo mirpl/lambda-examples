@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"go.uber.org/zap"
 )
 
 const (
@@ -21,57 +21,71 @@ const (
 	S3Bucket = "mvp-file-storage"
 )
 
+var (
+	log *zap.Logger
+)
+
 type FileServerEvent struct {
 	URL string `json:"url"`
 }
 
 func handler(ctx context.Context, evt FileServerEvent) (string, error) {
-	if _, err := url.ParseRequestURI(evt.URL); err != nil {
+	file, err := GetFileFromURL(evt.URL)
+	if err != nil {
 		return "", err
 	}
+	defer file.Close()
 
-	// Create a single AWS session (we can re use this if we're uploading many files)
-	s, err := session.NewSession(&aws.Config{Region: aws.String(S3Region)})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Upload
-	if err = SaveFileToS3(s, evt.URL); err != nil {
-		log.Fatal(err)
+	if err = SaveFileToS3(file, evt.URL); err != nil {
+		return "", err
 	}
 
 	return fmt.Sprintf("Hello %s!", evt.URL), nil
 }
 
-func SaveFileToS3(s *session.Session, url string) error {
+func GetFileFromURL(requestURL string) (*os.File, error) {
+	if _, err := url.ParseRequestURI(requestURL); err != nil {
+		log.Error("parsing request URL failed", zap.Error(err))
+		return nil, err
+	}
 
-	response, e := http.Get(url)
-	if e != nil {
-		log.Fatal(e)
+	response, err := http.Get(requestURL)
+	if err != nil {
+		log.Error("getting URL response failed", zap.Error(err))
+		return nil, err
 	}
 	defer response.Body.Close()
 
 	file, err := os.Create("/tmp/farmer.jpg")
 	if err != nil {
-		return err
+		log.Error("creating file failed", zap.Error(err))
+		return nil, err
 	}
-	defer file.Close()
 
 	if _, err = io.Copy(file, response.Body); err != nil {
-		log.Fatal(err)
+		log.Error("dumping response body to file failed", zap.Error(err))
+		return nil, err
+	}
+	return file, nil
+}
+
+func SaveFileToS3(file *os.File, requestURL string) error {
+	s, err := session.NewSession(&aws.Config{Region: aws.String(S3Region)})
+	if err != nil {
+		//log.Fatal(err)
 	}
 
 	fileInfo, _ := file.Stat()
 	var size = fileInfo.Size()
 	buffer := make([]byte, size)
 	if _, err := file.Read(buffer); err != nil {
+		log.Error("reading buffer failed", zap.Error(err))
 		return err
 	}
 
 	_, err = s3.New(s).PutObject(&s3.PutObjectInput{
 		Bucket:               aws.String(S3Bucket),
-		Key:                  aws.String(url),
+		Key:                  aws.String(requestURL),
 		ACL:                  aws.String("private"),
 		Body:                 bytes.NewReader(buffer),
 		ContentLength:        aws.Int64(size),
@@ -79,6 +93,9 @@ func SaveFileToS3(s *session.Session, url string) error {
 		ContentDisposition:   aws.String("attachment"),
 		ServerSideEncryption: aws.String("AES256"),
 	})
+	if err != nil {
+		log.Error("saving file to S3 failed", zap.Error(err))
+	}
 	return err
 }
 
