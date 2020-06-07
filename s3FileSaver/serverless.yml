@@ -1,4 +1,4 @@
-service: mvp-minioFileSaver
+service: mvp-s3FileSaver
 
 provider:
   name: aws
@@ -11,5 +11,7 @@ package:
     - ./bin/**
 
 functions:
-  minioFileSaver:
-    handler: ./bin/minioFileSaver
+  s3FileSaver:
+    handler: ./bin/s3FileSaver
+    events:
+      -

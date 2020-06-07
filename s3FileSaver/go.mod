@@ -1,4 +1,4 @@
-module github.com/mirpl/lambda-examples/minioFileSaver
+module github.com/mirpl/lambda-examples/s3FileSaver
 
 go 1.14
 
