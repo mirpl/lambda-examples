@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -23,40 +22,40 @@ const (
 )
 
 var (
-	log *zap.Logger
+	logger *zap.Logger
 )
 
-type fileSaverEvent struct {
-	requestURL string `json:"requestUrl"`
+type FileSaverEvent struct {
+	RequestURL string `json:"requestUrl"`
 }
 
-type fileSaverResponse struct {
-	inputURL string `json:"inputUrl"`
-	s3Path   string `json:"s3Path"`
+type FileSaverResponse struct {
+	InputURL string `json:"inputUrl"`
+	S3Path   string `json:"s3Path"`
 }
 
 func getFileFromURL(requestURL string) (*os.File, *url.URL, error) {
 	parsedURL, err := url.ParseRequestURI(requestURL)
 	if err != nil {
-		log.Error("parsing request URL failed", zap.Error(err))
+		logger.Error("parsing request URL failed", zap.Error(err))
 		return nil, nil, err
 	}
 
 	response, err := http.Get(requestURL)
 	if err != nil {
-		log.Error("getting URL response failed", zap.Error(err))
+		logger.Error("getting URL response failed", zap.Error(err))
 		return nil, nil, err
 	}
 	defer response.Body.Close()
 
-	file, err := os.Create(path.Base(parsedURL.Path))
+	file, err := os.Create(path.Join("/tmp", path.Base(parsedURL.Path)))
 	if err != nil {
-		log.Error("creating file failed", zap.Error(err))
+		logger.Error("creating file failed", zap.Error(err))
 		return nil, nil, err
 	}
 
 	if _, err = io.Copy(file, response.Body); err != nil {
-		log.Error("dumping response body to file failed", zap.Error(err))
+		logger.Error("dumping response body to file failed", zap.Error(err))
 		return nil, nil, err
 	}
 	return file, parsedURL, nil
@@ -65,20 +64,20 @@ func getFileFromURL(requestURL string) (*os.File, *url.URL, error) {
 func saveFileToS3(file *os.File, requestURL *url.URL) (string, error) {
 	s, err := session.NewSession(&aws.Config{Region: aws.String(s3Region)})
 	if err != nil {
-		log.Error("creating new AWS session failed", zap.Error(err))
+		logger.Error("creating new AWS session failed", zap.Error(err))
 		return "", err
 	}
 
 	fileInfo, err := file.Stat()
 	if err != nil {
-		log.Error("getting file info failed", zap.Error(err))
+		logger.Error("getting file info failed", zap.Error(err))
 		return "", err
 
 	}
 	var size = fileInfo.Size()
 	buffer := make([]byte, size)
-	if _, err := file.Read(buffer); err != nil {
-		log.Error("reading buffer failed", zap.Error(err))
+	if _, err := file.Read(buffer); err != nil && err != io.EOF {
+		logger.Error("reading buffer failed", zap.Error(err))
 		return "", err
 	}
 
@@ -86,7 +85,7 @@ func saveFileToS3(file *os.File, requestURL *url.URL) (string, error) {
 	_, err = s3.New(s).PutObject(&s3.PutObjectInput{
 		Bucket:               aws.String(s3Bucket),
 		Key:                  aws.String(s3KeyName),
-		ACL:                  aws.String("public"),
+		ACL:                  aws.String("public-read"),
 		Body:                 bytes.NewReader(buffer),
 		ContentLength:        aws.Int64(size),
 		ContentType:          aws.String(http.DetectContentType(buffer)),
@@ -94,31 +93,35 @@ func saveFileToS3(file *os.File, requestURL *url.URL) (string, error) {
 		ServerSideEncryption: aws.String("AES256"),
 	})
 	if err != nil {
-		log.Error("saving file to S3 failed", zap.Error(err))
+		logger.Error("saving file to S3 failed", zap.Error(err))
 	}
 	s3Path := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s3Bucket, s3Region, s3KeyName)
 	return s3Path, err
 }
 
-func handler(_ context.Context, evt fileSaverEvent) (fileSaverResponse, error) {
-
-	file, parsedURL, err := getFileFromURL(evt.requestURL)
+func handler(evt FileSaverEvent) (FileSaverResponse, error) {
+	file, parsedURL, err := getFileFromURL(evt.RequestURL)
 	if err != nil {
-		return fileSaverResponse{}, err
+		return FileSaverResponse{}, err
 	}
 	defer file.Close()
 
 	s3Path, err := saveFileToS3(file, parsedURL)
 	if err != nil {
-		return fileSaverResponse{}, err
+		return FileSaverResponse{}, err
 	}
 
-	return fileSaverResponse{
-		inputURL: evt.requestURL,
-		s3Path:   s3Path,
+	return FileSaverResponse{
+		InputURL: evt.RequestURL,
+		S3Path:   s3Path,
 	}, nil
 }
 
 func main() {
+	var err error
+	logger, err = zap.NewProduction()
+	if err != nil {
+		panic(err)
+	}
 	lambda.Start(handler)
 }
