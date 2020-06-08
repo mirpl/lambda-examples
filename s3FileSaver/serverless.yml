@@ -13,5 +13,3 @@ package:
 functions:
   s3FileSaver:
     handler: ./bin/s3FileSaver
-    events:
-      -
