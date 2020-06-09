@@ -1,0 +1,15 @@
+service: mvp-s3FileDownloader
+
+provider:
+  name: aws
+  runtime: go1.x
+
+package:
+  exclude:
+    - ./**
+  include:
+    - ./bin/**
+
+functions:
+  s3FileDownloader:
+    handler: ./bin/s3FileDownloader
