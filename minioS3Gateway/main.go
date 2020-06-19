@@ -161,34 +161,34 @@ func parseEnvVars() error {
 		return err
 	}
 
-	endpoint = os.Getenv(envVarAccessKey)
+	accessKeyID = os.Getenv(envVarAccessKey)
 	if len(endpoint) <= 0 {
 		err = fmt.Errorf(errMsgFormat, envVarAccessKey)
 		logger.Error(loggerErrMsg, zap.Error(err))
 		return err
 	}
 
-	endpoint = os.Getenv(envVarSecretKey)
+	secretAccessKey = os.Getenv(envVarSecretKey)
 	if len(endpoint) <= 0 {
 		err = fmt.Errorf(errMsgFormat, envVarSecretKey)
 		logger.Error(loggerErrMsg, zap.Error(err))
 		return err
 	}
 
-	endpoint = os.Getenv(envVarSSL)
+	useSSL = os.Getenv(envVarSSL)
 	if ok, err := strconv.ParseBool(endpoint); !ok {
 		logger.Error(loggerErrMsg, zap.Error(err))
 		return err
 	}
 
-	endpoint = os.Getenv(envVarBucket)
+	bucket = os.Getenv(envVarBucket)
 	if len(endpoint) <= 0 {
 		err = fmt.Errorf(errMsgFormat, envVarBucket)
 		logger.Error(loggerErrMsg, zap.Error(err))
 		return err
 	}
 
-	endpoint = os.Getenv(envVarRegion)
+	region = os.Getenv(envVarRegion)
 	if len(endpoint) <= 0 {
 		err = fmt.Errorf(errMsgFormat, envVarRegion)
 		logger.Error(loggerErrMsg, zap.Error(err))
