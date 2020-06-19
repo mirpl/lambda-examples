@@ -15,6 +15,7 @@ import (
 
 var (
 	logger             *zap.Logger
+	downloader         *s3manager.Downloader
 	s3Region, s3Bucket string
 )
 
@@ -28,14 +29,11 @@ type FileDownloaderResponse struct {
 	Content  []byte `json:"content"`
 }
 
-func handler(evt FileDownloaderEvent) (FileDownloaderResponse, error) {
-	sess := session.Must(session.NewSession(&aws.Config{Region: aws.String(s3Region)}))
-	downloader := s3manager.NewDownloader(sess)
-
+func handler(evt FileDownloaderEvent) (*FileDownloaderResponse, error) {
 	file, err := os.Create(path.Join("/tmp", evt.S3FileKey))
 	if err != nil {
 		logger.Error("creating file failed", zap.Error(err))
-		return FileDownloaderResponse{}, err
+		return nil, err
 	}
 	defer file.Close()
 
@@ -45,24 +43,37 @@ func handler(evt FileDownloaderEvent) (FileDownloaderResponse, error) {
 			SetKey(evt.S3FileKey),
 	); err != nil {
 		logger.Error("download from S3 failed", zap.Error(err))
-		return FileDownloaderResponse{}, err
+		return nil, err
 	}
 	fileInfo, err := file.Stat()
 	if err != nil {
 		logger.Error("getting file stat failed", zap.Error(err))
-		return FileDownloaderResponse{}, err
+		return nil, err
 	}
 	buffer := make([]byte, fileInfo.Size())
 	if _, err = file.Read(buffer); err != nil {
 		logger.Error("reading file failed", zap.Error(err))
-		return FileDownloaderResponse{}, err
+		return nil, err
 	}
 
-	return FileDownloaderResponse{
+	return &FileDownloaderResponse{
 		Filename: file.Name(),
 		Size:     fileInfo.Size(),
 		Content:  buffer,
 	}, err
+}
+
+func main() {
+	var err error
+	if logger, err = zap.NewProduction(); err != nil {
+		panic(err)
+	}
+	if err = parseEnvVars(); err != nil {
+		panic(err)
+	}
+	sess := session.Must(session.NewSession(&aws.Config{Region: aws.String(s3Region)}))
+	downloader = s3manager.NewDownloader(sess)
+	lambda.Start(handler)
 }
 
 func parseEnvVars() error {
@@ -82,12 +93,4 @@ func parseEnvVars() error {
 		return err
 	}
 	return nil
-}
-
-func main() {
-	var err error
-	if logger, err = zap.NewProduction(); err != nil {
-		panic(err)
-	}
-	lambda.Start(handler)
 }
