@@ -32,6 +32,23 @@ type FileSaverResponse struct {
 	S3Path   string `json:"s3Path"`
 }
 
+func handler(evt FileSaverEvent) (*FileSaverResponse, error) {
+	parsedURL, err := getFileFromURL(evt.RequestURL)
+	if err != nil {
+		return nil, err
+	}
+
+	s3Path, err := saveFileToS3(parsedURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &FileSaverResponse{
+		InputURL: evt.RequestURL,
+		S3Path:   s3Path,
+	}, nil
+}
+
 func getFileFromURL(requestURL string) (*url.URL, error) {
 	parsedURL, err := url.ParseRequestURI(requestURL)
 	if err != nil {
@@ -80,23 +97,6 @@ func saveFileToS3(requestURL *url.URL) (string, error) {
 		logger.Error("saving file to S3 failed", zap.Error(err))
 	}
 	return result.Location, err
-}
-
-func handler(evt FileSaverEvent) (FileSaverResponse, error) {
-	parsedURL, err := getFileFromURL(evt.RequestURL)
-	if err != nil {
-		return FileSaverResponse{}, err
-	}
-
-	s3Path, err := saveFileToS3(parsedURL)
-	if err != nil {
-		return FileSaverResponse{}, err
-	}
-
-	return FileSaverResponse{
-		InputURL: evt.RequestURL,
-		S3Path:   s3Path,
-	}, nil
 }
 
 func main() {
