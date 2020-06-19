@@ -16,8 +16,7 @@ import (
 )
 
 var (
-	s3Region = os.Getenv("S3_REGION")
-	s3Bucket = os.Getenv("S3_BUCKET")
+	s3Region, s3Bucket string
 )
 
 var (
@@ -34,14 +33,17 @@ type FileSaverResponse struct {
 }
 
 func handler(evt FileSaverEvent) (*FileSaverResponse, error) {
-	if err := checkEnvVars(); err != nil {
+	if err := parseEnvVars(); err != nil {
 		return nil, err
 	}
+
+	// Step 1 : Download file from evt.RequestURL
 	parsedURL, err := getFileFromURL(evt.RequestURL)
 	if err != nil {
 		return nil, err
 	}
 
+	// Step 2 : Save file to S3
 	s3Path, err := saveFileToS3(parsedURL)
 	if err != nil {
 		return nil, err
@@ -53,13 +55,17 @@ func handler(evt FileSaverEvent) (*FileSaverResponse, error) {
 	}, nil
 }
 
-func checkEnvVars() error {
+func parseEnvVars() error {
 	var err error
+
+	s3Region = os.Getenv("S3_REGION")
 	if len(s3Region) <= 0 {
 		err = errors.New("S3_REGION not provided")
 		logger.Error("environment variable is empty", zap.Error(err))
 		return err
 	}
+
+	s3Bucket = os.Getenv("S3_BUCKET")
 	if len(s3Bucket) <= 0 {
 		err = errors.New("S3_BUCKET not provided")
 		logger.Error("environment variable is empty", zap.Error(err))
