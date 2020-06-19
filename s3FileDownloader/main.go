@@ -30,6 +30,7 @@ type FileDownloaderResponse struct {
 }
 
 func handler(evt FileDownloaderEvent) (*FileDownloaderResponse, error) {
+	// Step 1: Create a file to write to
 	file, err := os.Create(path.Join("/tmp", evt.S3FileKey))
 	if err != nil {
 		logger.Error("creating file failed", zap.Error(err))
@@ -37,19 +38,19 @@ func handler(evt FileDownloaderEvent) (*FileDownloaderResponse, error) {
 	}
 	defer file.Close()
 
-	if _, err = downloader.Download(
-		file, (&s3.GetObjectInput{}).
-			SetBucket(s3Bucket).
-			SetKey(evt.S3FileKey),
-	); err != nil {
+	// Step 2: Get object and write its data to the created file
+	_, err = downloader.Download(file, (&s3.GetObjectInput{}).SetBucket(s3Bucket).SetKey(evt.S3FileKey))
+	if err != nil {
 		logger.Error("download from S3 failed", zap.Error(err))
 		return nil, err
 	}
+	// Step 3: Get file info
 	fileInfo, err := file.Stat()
 	if err != nil {
 		logger.Error("getting file stat failed", zap.Error(err))
 		return nil, err
 	}
+	//Step 4: Create a buffer to read file into
 	buffer := make([]byte, fileInfo.Size())
 	if _, err = file.Read(buffer); err != nil {
 		logger.Error("reading file failed", zap.Error(err))
