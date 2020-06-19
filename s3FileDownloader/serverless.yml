@@ -1,4 +1,4 @@
-service: mvp-s3FileDownloader
+service: s3FileDownloader
 
 provider:
   name: aws
