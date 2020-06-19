@@ -25,6 +25,7 @@ const (
 
 var (
 	logger                                                 *zap.Logger
+	s3Client                                               *minio.Client
 	endpoint, accessKeyID, secretAccessKey, bucket, region string
 	useSSL                                                 bool
 )
@@ -53,55 +54,28 @@ type MinioGatewayResponse struct {
 	Data    []byte `json:"data"`
 }
 
-func handler(evt MinioGatewayEvent) (MinioGatewayResponse, error) {
-	s3Client, err := minioGatewayClient()
-	if err != nil {
-		return MinioGatewayResponse{}, err
-	}
-	if err = checkBucket(s3Client); err != nil {
-		return MinioGatewayResponse{}, err
-	}
+func handler(evt MinioGatewayEvent) (*MinioGatewayResponse, error) {
+	// Step 1: Invoke function type based on the name and with data provided by event
 	respMsg, respData, err := invokeFunction(evt.FunctionType, evt.Data, s3Client)
 	if err != nil {
-		return MinioGatewayResponse{}, err
+		return nil, err
 	}
-	return MinioGatewayResponse{
+	// Step 4: Return response with message (upload/download) and data (download only)
+	return &MinioGatewayResponse{
 		Message: respMsg,
 		Data:    respData,
 	}, nil
 }
 
-func minioGatewayClient() (*minio.Client, error) {
-	s3Client, err := minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
-	if err != nil {
-		logger.Error("MinIO S3 client initialization failed", zap.Error(err))
-		return nil, err
-	}
-	return s3Client, nil
-}
-
-func checkBucket(client *minio.Client) error {
-	exist, err := client.BucketExists(bucket)
-	if err != nil {
-		logger.Error("checking bucket existence failed", zap.Error(err))
-		return err
-	}
-	if exist {
-		return nil
-	}
-	if err = client.MakeBucket(bucket, region); err != nil {
-		logger.Error("creating bucket failed", zap.Error(err))
-	}
-	return err
-}
-
 func invokeFunction(name, data string, client *minio.Client) (string, []byte, error) {
+	// Step 2: Get function mapped by type names
 	f, ok := functions[toID[name]]
 	if !ok {
 		err := fmt.Errorf("function \"%s\" doesn't exist", name)
 		logger.Error("invoking function failed", zap.Error(err))
 		return "", nil, err
 	}
+	// Step 3: Invoke appropriate function
 	respMsg, respData, err := f.(func(string, *minio.Client) (string, []byte, error))(data, client)
 	if err != nil {
 		logger.Error("invoking function failed", zap.Error(err))
@@ -165,6 +139,13 @@ func main() {
 	if err = parseEnvVars(); err != nil {
 		panic(err)
 	}
+	s3Client, err = minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
+	if err != nil {
+		panic(err)
+	}
+	if err = checkBucket(s3Client); err != nil {
+		panic(err)
+	}
 	lambda.Start(handler)
 }
 
@@ -214,4 +195,19 @@ func parseEnvVars() error {
 		return err
 	}
 	return nil
+}
+
+func checkBucket(client *minio.Client) error {
+	exist, err := client.BucketExists(bucket)
+	if err != nil {
+		logger.Error("checking bucket existence failed", zap.Error(err))
+		return err
+	}
+	if exist {
+		return nil
+	}
+	if err = client.MakeBucket(bucket, region); err != nil {
+		logger.Error("creating bucket failed", zap.Error(err))
+	}
+	return err
 }
