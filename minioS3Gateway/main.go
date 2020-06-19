@@ -5,7 +5,9 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path"
+	"strconv"
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/minio/minio-go/v6"
@@ -13,12 +15,18 @@ import (
 )
 
 const (
-	endpoint        = "s3.amazonaws.com"
-	accessKeyID     = "AKIAWVAPK7HAZEHHTJL7"
-	secretAccessKey = "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"
-	useSSL          = true
-	bucket          = "mvp-file-storage"
-	region          = "us-east-1"
+	envVarEndpoint  = "MINIO_ENDPOINT"
+	envVarAccessKey = "MINIO_ACCESSKEY"
+	envVarSecretKey = "MINIO_SECRETKEY"
+	envVarSSL       = "MINIO_USESSL"
+	envVarBucket    = "MINIO_BUCKETNAME"
+	envVarRegion    = "MINIO_LOCATION"
+)
+
+var (
+	logger                                                 *zap.Logger
+	endpoint, accessKeyID, secretAccessKey, bucket, region string
+	useSSL                                                 bool
 )
 
 type fName int
@@ -34,10 +42,6 @@ var toID = map[string]fName{
 }
 
 var functions = map[fName]interface{}{upload: minioUpload, download: minioDownload}
-
-var (
-	logger *zap.Logger
-)
 
 type MinioGatewayEvent struct {
 	FunctionType string `json:"functionType"`
@@ -158,5 +162,56 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	if err = parseEnvVars(); err != nil {
+		panic(err)
+	}
 	lambda.Start(handler)
+}
+
+func parseEnvVars() error {
+	var err error
+	loggerErrMsg := "parsing environment variable failed"
+	errMsgFormat := "%s not provided"
+
+	endpoint = os.Getenv(envVarEndpoint)
+	if len(endpoint) <= 0 {
+		err = fmt.Errorf(errMsgFormat, envVarEndpoint)
+		logger.Error(loggerErrMsg, zap.Error(err))
+		return err
+	}
+
+	endpoint = os.Getenv(envVarAccessKey)
+	if len(endpoint) <= 0 {
+		err = fmt.Errorf(errMsgFormat, envVarAccessKey)
+		logger.Error(loggerErrMsg, zap.Error(err))
+		return err
+	}
+
+	endpoint = os.Getenv(envVarSecretKey)
+	if len(endpoint) <= 0 {
+		err = fmt.Errorf(errMsgFormat, envVarSecretKey)
+		logger.Error(loggerErrMsg, zap.Error(err))
+		return err
+	}
+
+	endpoint = os.Getenv(envVarSSL)
+	if ok, err := strconv.ParseBool(endpoint); !ok {
+		logger.Error(loggerErrMsg, zap.Error(err))
+		return err
+	}
+
+	endpoint = os.Getenv(envVarBucket)
+	if len(endpoint) <= 0 {
+		err = fmt.Errorf(errMsgFormat, envVarBucket)
+		logger.Error(loggerErrMsg, zap.Error(err))
+		return err
+	}
+
+	endpoint = os.Getenv(envVarRegion)
+	if len(endpoint) <= 0 {
+		err = fmt.Errorf(errMsgFormat, envVarRegion)
+		logger.Error(loggerErrMsg, zap.Error(err))
+		return err
+	}
+	return nil
 }
