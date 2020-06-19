@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -33,6 +34,9 @@ type FileSaverResponse struct {
 }
 
 func handler(evt FileSaverEvent) (*FileSaverResponse, error) {
+	if err := checkEnvVars(); err != nil {
+		return nil, err
+	}
 	parsedURL, err := getFileFromURL(evt.RequestURL)
 	if err != nil {
 		return nil, err
@@ -47,6 +51,21 @@ func handler(evt FileSaverEvent) (*FileSaverResponse, error) {
 		InputURL: evt.RequestURL,
 		S3Path:   s3Path,
 	}, nil
+}
+
+func checkEnvVars() error {
+	var err error
+	if len(s3Region) <= 0 {
+		err = errors.New("S3_REGION not provided")
+		logger.Error("environment variable is empty", zap.Error(err))
+		return err
+	}
+	if len(s3Bucket) <= 0 {
+		err = errors.New("S3_BUCKET not provided")
+		logger.Error("environment variable is empty", zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 func getFileFromURL(requestURL string) (*url.URL, error) {
