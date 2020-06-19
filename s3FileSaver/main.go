@@ -14,9 +14,9 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	s3Region = "us-east-1"
-	s3Bucket = "mvp-file-storage"
+var (
+	s3Region = os.Getenv("S3_REGION")
+	s3Bucket = os.Getenv("S3_BUCKET")
 )
 
 var (
