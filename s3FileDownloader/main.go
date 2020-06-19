@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path"
 
@@ -12,13 +13,9 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	s3Region = "us-east-1"
-	s3Bucket = "mvp-file-storage"
-)
-
 var (
-	logger *zap.Logger
+	logger             *zap.Logger
+	s3Region, s3Bucket string
 )
 
 type FileDownloaderEvent struct {
@@ -31,11 +28,11 @@ type FileDownloaderResponse struct {
 	Content  []byte `json:"content"`
 }
 
-func downloadFileFromS3(s3key string) (FileDownloaderResponse, error) {
+func handler(evt FileDownloaderEvent) (FileDownloaderResponse, error) {
 	sess := session.Must(session.NewSession(&aws.Config{Region: aws.String(s3Region)}))
 	downloader := s3manager.NewDownloader(sess)
 
-	file, err := os.Create(path.Join("/tmp", s3key))
+	file, err := os.Create(path.Join("/tmp", evt.S3FileKey))
 	if err != nil {
 		logger.Error("creating file failed", zap.Error(err))
 		return FileDownloaderResponse{}, err
@@ -45,7 +42,7 @@ func downloadFileFromS3(s3key string) (FileDownloaderResponse, error) {
 	if _, err = downloader.Download(
 		file, (&s3.GetObjectInput{}).
 			SetBucket(s3Bucket).
-			SetKey(s3key),
+			SetKey(evt.S3FileKey),
 	); err != nil {
 		logger.Error("download from S3 failed", zap.Error(err))
 		return FileDownloaderResponse{}, err
@@ -68,8 +65,23 @@ func downloadFileFromS3(s3key string) (FileDownloaderResponse, error) {
 	}, err
 }
 
-func handler(evt FileDownloaderEvent) (FileDownloaderResponse, error) {
-	return downloadFileFromS3(evt.S3FileKey)
+func parseEnvVars() error {
+	var err error
+
+	s3Region = os.Getenv("S3_REGION")
+	if len(s3Region) <= 0 {
+		err = errors.New("S3_REGION not provided")
+		logger.Error("environment variable is empty", zap.Error(err))
+		return err
+	}
+
+	s3Bucket = os.Getenv("S3_BUCKET")
+	if len(s3Bucket) <= 0 {
+		err = errors.New("S3_BUCKET not provided")
+		logger.Error("environment variable is empty", zap.Error(err))
+		return err
+	}
+	return nil
 }
 
 func main() {
