@@ -1,4 +1,4 @@
-service: mvp-minioS3Gateway
+service: minioS3Gateway
 
 provider:
   name: aws
