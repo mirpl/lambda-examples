@@ -39,8 +39,10 @@ func handler(evt FileDownloaderEvent) (*FileDownloaderResponse, error) {
 	defer file.Close()
 
 	// Step 2: Get object and write its data to the created file
-	_, err = downloader.Download(file, (&s3.GetObjectInput{}).SetBucket(s3Bucket).SetKey(evt.S3FileKey))
-	if err != nil {
+	if _, err = downloader.Download(file, &s3.GetObjectInput{
+		Bucket: aws.String(s3Bucket),
+		Key:    aws.String(evt.S3FileKey),
+	}); err != nil {
 		logger.Error("download from S3 failed", zap.Error(err))
 		return nil, err
 	}
