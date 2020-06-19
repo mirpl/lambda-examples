@@ -1,4 +1,4 @@
-service: mvp-s3FileSaver
+service: s3FileSaver
 
 provider:
   name: aws
