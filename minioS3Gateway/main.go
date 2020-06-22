@@ -30,19 +30,10 @@ var (
 	useSSL                                                 bool
 )
 
-type fName int
-
 const (
-	upload fName = iota
-	download
+	upload   = "upload"
+	download = "download"
 )
-
-var toID = map[string]fName{
-	"upload":   upload,
-	"download": download,
-}
-
-var functions = map[fName]interface{}{upload: minioUpload, download: minioDownload}
 
 type MinioGatewayEvent struct {
 	FunctionType string `json:"functionType"`
@@ -55,33 +46,29 @@ type MinioGatewayResponse struct {
 }
 
 func handler(evt MinioGatewayEvent) (*MinioGatewayResponse, error) {
-	// Step 1: Invoke function type based on the name and with data provided by event
-	respMsg, respData, err := invokeFunction(evt.FunctionType, evt.Data, s3Client)
-	if err != nil {
+	var (
+		respMsg  string
+		respData []byte
+		err      error
+	)
+	// Step 1: Invoke function based on the type name and with data provided by event
+	switch evt.FunctionType {
+	case upload:
+		// Download file from 'evt.Data' url and upload to bucket
+		respMsg, respData, err = minioUpload(evt.Data, s3Client)
+	case download:
+		// Download file from 'evt.Data' object name and quit
+		respMsg, respData, err = minioDownload(evt.Data, s3Client)
+	default:
+		err = fmt.Errorf("function type \"%s\" is invalid", evt.FunctionType)
+		logger.Error("function type not supported", zap.Error(err))
 		return nil, err
 	}
-	// Step 4: Return response with message (upload/download) and data (download only)
+	// Step 2: Return response with message (upload/download) and data (download only)
 	return &MinioGatewayResponse{
 		Message: respMsg,
 		Data:    respData,
 	}, nil
-}
-
-func invokeFunction(name, data string, client *minio.Client) (string, []byte, error) {
-	// Step 2: Get function mapped by type names
-	f, ok := functions[toID[name]]
-	if !ok {
-		err := fmt.Errorf("function \"%s\" doesn't exist", name)
-		logger.Error("invoking function failed", zap.Error(err))
-		return "", nil, err
-	}
-	// Step 3: Invoke appropriate function
-	respMsg, respData, err := f.(func(string, *minio.Client) (string, []byte, error))(data, client)
-	if err != nil {
-		logger.Error("invoking function failed", zap.Error(err))
-		return "", nil, err
-	}
-	return respMsg, respData, nil
 }
 
 func minioUpload(urlAddr string, client *minio.Client) (string, []byte, error) {
@@ -139,6 +126,13 @@ func main() {
 	if err = parseEnvVars(); err != nil {
 		panic(err)
 	}
+	logger.Info("env var endpoint", zap.String("endpoint", endpoint))
+	logger.Info("env var access key", zap.String("access", accessKeyID))
+	logger.Info("env var secret key", zap.String("secret", secretAccessKey))
+	logger.Info("env var SSL", zap.String("ssl", strconv.FormatBool(useSSL)))
+	logger.Info("env var bucket name", zap.String("bucket", bucket))
+	logger.Info("env var location", zap.String("region", region))
+
 	s3Client, err = minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
 	if err != nil {
 		panic(err)
