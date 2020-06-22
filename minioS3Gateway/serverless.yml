@@ -1,0 +1,15 @@
+service: minioS3Gateway
+
+provider:
+  name: aws
+  runtime: go1.x
+
+package:
+  exclude:
+    - ./**
+  include:
+    - ./bin/**
+
+functions:
+  minioS3Gateway:
+    handler: ./bin/minioS3Gateway
