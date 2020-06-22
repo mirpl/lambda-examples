@@ -126,13 +126,6 @@ func main() {
 	if err = parseEnvVars(); err != nil {
 		panic(err)
 	}
-	logger.Info("env var endpoint", zap.String("endpoint", endpoint))
-	logger.Info("env var access key", zap.String("access", accessKeyID))
-	logger.Info("env var secret key", zap.String("secret", secretAccessKey))
-	logger.Info("env var SSL", zap.String("ssl", strconv.FormatBool(useSSL)))
-	logger.Info("env var bucket name", zap.String("bucket", bucket))
-	logger.Info("env var location", zap.String("region", region))
-
 	s3Client, err = minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
 	if err != nil {
 		panic(err)
@@ -183,7 +176,7 @@ func parseEnvVars() error {
 	}
 
 	region = os.Getenv(envVarRegion)
-	if len(region) <= 0 {
+	if len(region) < 0 { // empty string results setting default region value in client.MakeBucket function
 		err = fmt.Errorf(errMsgFormat, envVarRegion)
 		logger.Error(loggerErrMsg, zap.Error(err))
 		return err

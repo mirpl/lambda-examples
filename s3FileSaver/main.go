@@ -33,10 +33,6 @@ type FileSaverResponse struct {
 }
 
 func handler(evt FileSaverEvent) (*FileSaverResponse, error) {
-	if err := parseEnvVars(); err != nil {
-		return nil, err
-	}
-
 	// Step 1 : Download file from evt.RequestURL
 	parsedURL, err := getFileFromURL(evt.RequestURL)
 	if err != nil {
@@ -53,25 +49,6 @@ func handler(evt FileSaverEvent) (*FileSaverResponse, error) {
 		InputURL: evt.RequestURL,
 		S3Path:   s3Path,
 	}, nil
-}
-
-func parseEnvVars() error {
-	var err error
-
-	s3Region = os.Getenv("S3_REGION")
-	if len(s3Region) <= 0 {
-		err = errors.New("S3_REGION not provided")
-		logger.Error("environment variable is empty", zap.Error(err))
-		return err
-	}
-
-	s3Bucket = os.Getenv("S3_BUCKET")
-	if len(s3Bucket) <= 0 {
-		err = errors.New("S3_BUCKET not provided")
-		logger.Error("environment variable is empty", zap.Error(err))
-		return err
-	}
-	return nil
 }
 
 func getFileFromURL(requestURL string) (*url.URL, error) {
@@ -130,5 +107,27 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	if err := parseEnvVars(); err != nil {
+		panic(err)
+	}
 	lambda.Start(handler)
+}
+
+func parseEnvVars() error {
+	var err error
+
+	s3Region = os.Getenv("S3_REGION")
+	if len(s3Region) <= 0 {
+		err = errors.New("S3_REGION not provided")
+		logger.Error("environment variable is empty", zap.Error(err))
+		return err
+	}
+
+	s3Bucket = os.Getenv("S3_BUCKET")
+	if len(s3Bucket) <= 0 {
+		err = errors.New("S3_BUCKET not provided")
+		logger.Error("environment variable is empty", zap.Error(err))
+		return err
+	}
+	return nil
 }
