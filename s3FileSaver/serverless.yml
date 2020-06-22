@@ -1,0 +1,15 @@
+service: s3FileSaver
+
+provider:
+  name: aws
+  runtime: go1.x
+
+package:
+  exclude:
+    - ./**
+  include:
+    - ./bin/**
+
+functions:
+  s3FileSaver:
+    handler: ./bin/s3FileSaver
