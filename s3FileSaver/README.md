@@ -15,7 +15,7 @@
 #### Deploy with Serverless:
 
 You need to have Serverless installed on your machine.
-Once Serverless' installed, go to this README's location in your terminal and type the following commands:
+Once Serverless' installed, go to this README's location in your terminal and type the following command:
 
 ```
 sls invoke local -f s3FileSaver \
