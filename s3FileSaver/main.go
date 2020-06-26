@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -10,17 +11,25 @@ import (
 
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"go.uber.org/zap"
 )
 
-var (
-	s3Region, s3Bucket string
+const (
+	envVarEndpoint  = "S3_ENDPOINT"
+	envVarAccessKey = "S3_ACCESSKEY"
+	envVarSecretKey = "S3_SECRETKEY"
+	envVarRegion    = "S3_LOCATION"
+	envVarBucket    = "S3_BUCKET"
 )
 
 var (
-	logger *zap.Logger
+	logger                       *zap.Logger
+	uploader                     *s3manager.Uploader
+	endpoint, bucket, region     *string
+	accessKeyID, secretAccessKey string
 )
 
 type FileSaverEvent struct {
@@ -80,9 +89,6 @@ func getFileFromURL(requestURL string) (*url.URL, error) {
 }
 
 func saveFileToS3(requestURL *url.URL) (string, error) {
-	sess := session.Must(session.NewSession(&aws.Config{Region: aws.String(s3Region)}))
-	uploader := s3manager.NewUploader(sess)
-
 	file, err := os.Open(path.Join("/tmp", path.Base(requestURL.Path)))
 	if err != nil {
 		logger.Error("reading file to upload failed", zap.Error(err))
@@ -92,41 +98,71 @@ func saveFileToS3(requestURL *url.URL) (string, error) {
 
 	result, err := uploader.Upload(&s3manager.UploadInput{
 		Body:   file,
-		Bucket: aws.String(s3Bucket),
+		Bucket: bucket,
 		Key:    aws.String(path.Base(requestURL.Path)),
 	})
 	if err != nil {
 		logger.Error("saving file to S3 failed", zap.Error(err))
 	}
-	return result.Location, err
+	r := ""
+	if result != nil {
+		r = result.Location
+	}
+	return r, err
 }
 
 func main() {
 	var err error
-	logger, err = zap.NewProduction()
 	if err != nil {
 		panic(err)
 	}
 	if err := parseEnvVars(); err != nil {
 		panic(err)
 	}
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region:      region,
+		Endpoint:    endpoint,
+		Credentials: credentials.NewStaticCredentials(accessKeyID, secretAccessKey, ""),
+	}))
+	uploader = s3manager.NewUploader(sess)
 	lambda.Start(handler)
 }
 
 func parseEnvVars() error {
 	var err error
+	loggerErrMsg := "parsing environment variable failed"
+	errMsgFormat := "%s not provided"
 
-	s3Region = os.Getenv("S3_REGION")
-	if len(s3Region) <= 0 {
-		err = errors.New("S3_REGION not provided")
-		logger.Error("environment variable is empty", zap.Error(err))
+	endpoint = aws.String(os.Getenv(envVarEndpoint))
+	if *endpoint == "" {
+		endpoint = nil
+	}
+
+	accessKeyID = os.Getenv(envVarAccessKey)
+	if len(accessKeyID) <= 0 {
+		err = errors.New(fmt.Sprintf(errMsgFormat, envVarAccessKey))
+		logger.Error(loggerErrMsg, zap.Error(err))
 		return err
 	}
 
-	s3Bucket = os.Getenv("S3_BUCKET")
-	if len(s3Bucket) <= 0 {
-		err = errors.New("S3_BUCKET not provided")
-		logger.Error("environment variable is empty", zap.Error(err))
+	secretAccessKey = os.Getenv(envVarSecretKey)
+	if len(secretAccessKey) <= 0 {
+		err = errors.New(fmt.Sprintf(errMsgFormat, envVarSecretKey))
+		logger.Error(loggerErrMsg, zap.Error(err))
+		return err
+	}
+
+	bucket = aws.String(os.Getenv(envVarBucket))
+	if len(*bucket) <= 0 {
+		err = errors.New(fmt.Sprintf(errMsgFormat, envVarBucket))
+		logger.Error(loggerErrMsg, zap.Error(err))
+		return err
+	}
+
+	region = aws.String(os.Getenv(envVarRegion))
+	if len(*region) <= 0 {
+		err = errors.New(fmt.Sprintf(errMsgFormat, envVarRegion))
+		logger.Error(loggerErrMsg, zap.Error(err))
 		return err
 	}
 	return nil
