@@ -3,11 +3,11 @@
 - AWS_SECRET_ACCESS_KEY - AWS Secret access key
 
 ## Lambda Envs:
-- S3_ENDPOINT - object storage endpoint, e.g. _s3.amazonaws.com_
-- S3_ACCESSKEY - access key for the object storage
-- S3_SECRETKEY - secret key for the object storage
-- S3_LOCATION - region code, e.g. _us-east-1_
+- S3_ENDPOINT - S3 compatible object storage endpoint, e.g. _s3.amazonaws.com_
+- S3_ACCESS_KEY - access key for the object storage
+- S3_SECRET_KEY - secret key for the object storage
 - S3_BUCKET - bucket name
+- S3_REGION - region code, e.g. _us-east-1_
 
 
 ## Test Deployment
@@ -19,10 +19,10 @@ Once Serverless' installed, go to this README's location in your terminal and ty
 
 ```
 sls invoke local -f s3FileSaver \
--e S3_ENDPOINT=<object storage endpoint> \
--e S3_ACCESSKEY=<object storage access key> \
--e S3_SECRETKEY=<object storage secret key ID> \
--e S3_LOCATION=us-east-1 \
--e S3_BUCKET=lambda-example-file-storage \
---path data.json
+    -e S3_ENDPOINT=<object storage endpoint> \
+    -e S3_ACCESS_KEY=<object storage access key> \
+    -e S3_SECRET_KEY=<object storage secret key ID> \
+    -e S3_REGION=us-east-1 \
+    -e S3_BUCKET=lambda-example-file-storage \
+    --path data.json
 ```

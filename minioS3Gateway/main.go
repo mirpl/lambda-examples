@@ -16,11 +16,11 @@ import (
 
 const (
 	envVarEndpoint  = "MINIO_ENDPOINT"
-	envVarAccessKey = "MINIO_ACCESSKEY"
-	envVarSecretKey = "MINIO_SECRETKEY"
-	envVarSSL       = "MINIO_USESSL"
-	envVarBucket    = "MINIO_BUCKETNAME"
-	envVarRegion    = "MINIO_LOCATION"
+	envVarAccessKey = "MINIO_ACCESS_KEY"
+	envVarSecretKey = "MINIO_SECRET_KEY"
+	envVarSSL       = "MINIO_USE_SSL"
+	envVarRegion    = "MINIO_REGION"
+	envVarBucket    = "MINIO_BUCKET"
 )
 
 var (
@@ -175,12 +175,7 @@ func parseEnvVars() error {
 		return err
 	}
 
-	region = os.Getenv(envVarRegion)
-	if len(region) < 0 { // empty string results setting default region value in client.MakeBucket function
-		err = fmt.Errorf(errMsgFormat, envVarRegion)
-		logger.Error(loggerErrMsg, zap.Error(err))
-		return err
-	}
+	region = os.Getenv(envVarRegion) // empty string results setting default region value in client.MakeBucket function
 	return nil
 }
 

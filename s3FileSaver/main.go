@@ -19,9 +19,9 @@ import (
 
 const (
 	envVarEndpoint  = "S3_ENDPOINT"
-	envVarAccessKey = "S3_ACCESSKEY"
-	envVarSecretKey = "S3_SECRETKEY"
-	envVarRegion    = "S3_LOCATION"
+	envVarAccessKey = "S3_ACCESS_KEY"
+	envVarSecretKey = "S3_SECRET_KEY"
+	envVarRegion    = "S3_REGION"
 	envVarBucket    = "S3_BUCKET"
 )
 
