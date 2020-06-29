@@ -1,7 +1,7 @@
 .PHONY: build clean deploy
 
 build:
-	env GOOS=linux go build -ldflags="-s -w" -o ./bin/minioS3Gateway main.go
+	env GOOS=linux go build -ldflags="-s -w" -o ./bin/minioGateway main.go
 
 clean:
 	rm -rf ./bin

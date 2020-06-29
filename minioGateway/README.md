@@ -32,7 +32,7 @@ Once Serverless' installed, go to this README's location in your terminal and ty
 - File Upload:
 
 ```
-sls invoke local -f minioS3Gateway \
+sls invoke local -f minioGateway \
     -e MINIO_ENDPOINT=<gateway endpoint> \
     -e MINIO_ACCESS_KEY=<object storage access key> \
     -e MINIO_SECRET_KEY=<object storage secret key ID> \
@@ -45,7 +45,7 @@ sls invoke local -f minioS3Gateway \
 - File Download:
 
 ```
-sls invoke local -f minioS3Gateway \
+sls invoke local -f minioGateway \
     -e MINIO_ENDPOINT=<gateway endpoint> \
     -e MINIO_ACCESS_KEY=<object storage access key> \
     -e MINIO_SECRET_KEY=<object storage secret key ID> \

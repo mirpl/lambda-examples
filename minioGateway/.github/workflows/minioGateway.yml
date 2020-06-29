@@ -1,15 +1,15 @@
-name: Deploy MinIOS3Gateway
+name: Deploy MinIOGateway
 
 on:
   push:
     branches:
       - master
     paths:
-      - "minioS3Gateway/*"
+      - "minioGateway/*"
 
 defaults:
   run:
-    working-directory: minioS3Gateway
+    working-directory: minioGateway
 
 jobs:
   deploy:
@@ -29,4 +29,4 @@ jobs:
 
       - name: clean
         run: make clean
-        working-directory: minioS3Gateway
+        working-directory: minioGateway

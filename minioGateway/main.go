@@ -25,7 +25,7 @@ const (
 
 var (
 	logger                                                 *zap.Logger
-	s3Client                                               *minio.Client
+	client                                                 *minio.Client
 	endpoint, accessKeyID, secretAccessKey, bucket, region string
 	useSSL                                                 bool
 )
@@ -55,10 +55,10 @@ func handler(evt MinioGatewayEvent) (*MinioGatewayResponse, error) {
 	switch evt.FunctionType {
 	case upload:
 		// Download file from 'evt.Data' url and upload to bucket
-		respMsg, respData, err = minioUpload(evt.Data, s3Client)
+		respMsg, respData, err = minioUpload(evt.Data, client)
 	case download:
 		// Download file from 'evt.Data' object name and quit
-		respMsg, respData, err = minioDownload(evt.Data, s3Client)
+		respMsg, respData, err = minioDownload(evt.Data, client)
 	default:
 		err = fmt.Errorf("function type \"%s\" is invalid", evt.FunctionType)
 		logger.Error("function type not supported", zap.Error(err))
@@ -126,11 +126,11 @@ func main() {
 	if err = parseEnvVars(); err != nil {
 		panic(err)
 	}
-	s3Client, err = minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
+	client, err = minio.New(endpoint, accessKeyID, secretAccessKey, useSSL)
 	if err != nil {
 		panic(err)
 	}
-	if err = checkBucket(s3Client); err != nil {
+	if err = checkBucket(client); err != nil {
 		panic(err)
 	}
 	lambda.Start(handler)

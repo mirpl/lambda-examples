@@ -1,4 +1,4 @@
-service: minioS3Gateway
+service: minioGateway
 
 provider:
   name: aws
@@ -11,5 +11,5 @@ package:
     - ./bin/**
 
 functions:
-  minioS3Gateway:
-    handler: ./bin/minioS3Gateway
+  minioGateway:
+    handler: ./bin/minioGateway

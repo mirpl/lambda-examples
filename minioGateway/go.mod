@@ -1,4 +1,4 @@
-module github.com/mirpl/lambda-examples/minioS3Gateway
+module github.com/mirpl/lambda-examples/minioGateway
 
 go 1.14
 
