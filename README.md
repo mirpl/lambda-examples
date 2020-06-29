@@ -8,4 +8,4 @@ _MinIO S3 Gateway_ uses MinIO service as a gateway for uploading/downloading fil
 
 - [S3 File Uploader](s3FileSaver/README.md)
 - [S3 File Downloader](s3FileDownloader/README.md)
-- [MinIO S3 Gateway](minioGateway/README.md)
+- [MinIO Gateway](minioGateway/README.md)
